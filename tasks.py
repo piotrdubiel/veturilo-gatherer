@@ -36,6 +36,17 @@ def station_status():
 
 
 def _get_stations(stations):
-    return map(lambda s:
-               {k.encode("utf-8"): v.encode("utf-8")
-                for k, v in s.attrib.items()}, stations)
+    mapped_stations = map(lambda s:
+                          {k.encode("utf-8"): v.encode("utf-8")
+                           for k, v in s.attrib.items()}, stations)
+    return map(lambda s: {"bike_numbers": s["bike_numbers"].split(",") if "bike_numbers" in s else [],
+                          "bike_racks": s["bike_racks"] if "bike_racks" in s else 0,
+                          "bikes": s["bikes"],
+                          "location": [float(s["lng"]), float(s["lat"])],
+                          "name": s["name"],
+                          "spot": s["spot"],
+                          "number": s["number"],
+                          "uid": s["uid"]}, mapped_stations)
+
+
+station_status()
