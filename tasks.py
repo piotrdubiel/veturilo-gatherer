@@ -6,6 +6,7 @@ from datetime import timedelta
 from lxml import objectify
 from pymongo import MongoClient
 from urlparse import urlparse
+from datetime import datetime
 
 STATION_URL = "https://nextbike.net/maps/nextbike-official.xml?city=210"
 REDIS_URL = os.environ.get("REDISTOGO_URL", "redis://localhost")
@@ -25,7 +26,9 @@ app = Celery("tasks", broker=REDIS_URL)
 @periodic_task(run_every=timedelta(minutes=5))
 def station_status():
     resp = urllib2.urlopen(STATION_URL)
-    data = objectify.fromstring(resp.read())
+    xml = resp.read()
+    print xml
+    data = objectify.fromstring(xml)
 
     stations_element = data.country.city.place
     stations = _get_stations(stations_element)
@@ -33,6 +36,8 @@ def station_status():
     for station in stations:
         db.stations.update({"uid": station["uid"]},
                            {"$set": station}, upsert=True)
+
+    db.updates.insert({"date": datetime.now()})
 
 
 def _get_stations(stations):
