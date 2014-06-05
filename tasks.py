@@ -33,11 +33,7 @@ def station_status():
     stations_element = data.country.city.place
     stations = _get_stations(stations_element)
 
-    for station in stations:
-        db.stations.update({"uid": station["uid"]},
-                           {"$set": station}, upsert=True)
-
-    db.updates.insert({"date": datetime.now()})
+    db.stations.insert({"stations": stations, "updated": datetime.now()})
 
 
 def _get_stations(stations):
