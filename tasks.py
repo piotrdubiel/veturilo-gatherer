@@ -27,13 +27,17 @@ app = Celery("tasks", broker=REDIS_URL)
 def station_status():
     resp = urllib2.urlopen(STATION_URL)
     xml = resp.read()
-    print xml
     data = objectify.fromstring(xml)
 
     stations_element = data.country.city.place
     stations = _get_stations(stations_element)
 
+    print len(stations)
     db.stations.insert({"stations": stations, "updated": datetime.now()})
+
+    for station in stations:
+        db.latest.update({"uid": station["uid"]},
+                         {"$set": station}, upsert=True)
 
 
 def _get_stations(stations):
