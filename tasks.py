@@ -7,6 +7,7 @@ from lxml import objectify
 from pymongo import MongoClient
 from urlparse import urlparse
 from datetime import datetime
+from firebase import firebase
 
 STATION_URL = "https://nextbike.net/maps/nextbike-official.xml?city=210"
 REDIS_URL = os.environ.get("REDISTOGO_URL", "redis://localhost")
@@ -21,6 +22,7 @@ else:
     db = client.meteor
 
 app = Celery("tasks", broker=REDIS_URL)
+firebase = firebase.FirebaseApplication("https://luminous-fire-8583.firebaseio.com", None)
 
 
 @periodic_task(run_every=timedelta(minutes=5))
@@ -38,6 +40,8 @@ def station_status():
     for station in stations:
         db.latest.update({"uid": station["uid"]},
                          {"$set": station}, upsert=True)
+
+    firebase.put("/stations", "stations", stations)
 
 
 def _get_stations(stations):
