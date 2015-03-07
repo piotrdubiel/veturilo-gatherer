@@ -7,7 +7,6 @@ from lxml import objectify
 from pymongo import MongoClient
 from urlparse import urlparse
 from datetime import datetime
-from firebase import firebase
 
 STATION_URL = "https://nextbike.net/maps/nextbike-official.xml?city=210"
 REDIS_URL = os.environ.get("REDISTOGO_URL", "redis://localhost")
@@ -18,11 +17,10 @@ if MONGO_URL:
     database_name = urlparse(MONGO_URL).path.lstrip("/")
     db = client[database_name]
 else:
-    client = MongoClient("localhost", 3001)
-    db = client.meteor
+    client = MongoClient("localhost", 27017)
+    db = client.wearturilo
 
 app = Celery("tasks", broker=REDIS_URL)
-firebase = firebase.FirebaseApplication("https://luminous-fire-8583.firebaseio.com", None)
 
 
 @periodic_task(run_every=timedelta(minutes=5))
@@ -41,21 +39,33 @@ def station_status():
         db.latest.update({"uid": station["uid"]},
                          {"$set": station}, upsert=True)
 
-    firebase.put("/stations", "stations", stations)
-
 
 def _get_stations(stations):
     mapped_stations = map(lambda s:
                           {k.encode("utf-8"): v.encode("utf-8")
                            for k, v in s.attrib.items()}, stations)
-    return map(lambda s: {"bike_numbers": s["bike_numbers"].split(",") if "bike_numbers" in s else [],
-                          "bike_racks": s["bike_racks"] if "bike_racks" in s else 0,
-                          "bikes": s["bikes"],
-                          "location": [float(s["lng"]), float(s["lat"])],
-                          "name": s["name"],
-                          "spot": s["spot"],
-                          "number": s["number"],
+    return map(lambda s: {"bikeIds": s["bike_numbers"].split(",") if "bike_numbers" in s else [],
+                          "rackNumber": s["bike_racks"] if "bike_racks" in s else 0,
+                          "bikeNumber": _get_bike_count(s["bikes"]),
+                          "lat": float(s["lat"]),
+                          "lng": float(s["lng"]),
+                          "stationName": s["name"],
+                          "stationNumber": s["number"],
                           "uid": s["uid"]}, mapped_stations)
 
+
+def _get_bike_count(count):
+    if count == '1':
+        return "ONE"
+    elif count == '2':
+        return "TWO"
+    elif count == '3':
+        return "THREE"
+    elif count == '4':
+        return "FOUR"
+    elif count == '5+':
+        return "MORE"
+    else:
+        return "NONE"
 
 station_status()
